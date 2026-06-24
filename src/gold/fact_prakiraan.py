@@ -4,17 +4,13 @@ Depends on:
   - DuckDB table: dim_wilayah    (dim_wilayah.py must run first)
   - DuckDB table: dim_cuaca      (dim_cuaca.py must run first)
   - DuckDB table: dim_waktu      (dim_waktu.py must run first)
-  - Silver BMKG Delta table      (Fabio's src/silver/bmkg.py must run first)
-
-TODO (after Silver BMKG is available from Fabio):
-  1. Verify column names in Silver BMKG — see placeholder section below.
-  2. Adjust SILVER_BMKG_DELTA_URI if Fabio uses a different path.
-  3. Replace TODO column references with actual field names.
-  4. Run: py -m src.gold.fact_prakiraan
+  - Silver BMKG Delta table      (src/silver/bmkg.py must run first)
 
 Writes to:
   - s3://gold/fact_prakiraan_cuaca/  (Delta Lake)
   - DuckDB table: fact_prakiraan_cuaca
+
+Run: py -m src.gold.fact_prakiraan
 """
 import os
 
@@ -27,8 +23,7 @@ from setup_buckets import get_duckdb_connection
 
 log = get_logger("gold_fact_prakiraan")
 
-# TODO: sesuaikan path ini setelah tanya Fabio
-SILVER_BMKG_DELTA_URI = f"s3://{config.BUCKET_SILVER}/bmkg/delta"
+SILVER_BMKG_DELTA_URI = f"s3://{config.BUCKET_SILVER}/bmkg"
 
 DELTA_URI = f"s3://{config.BUCKET_GOLD}/fact_prakiraan_cuaca"
 STORAGE_OPTIONS = {
@@ -40,30 +35,14 @@ STORAGE_OPTIONS = {
     "AWS_S3_ALLOW_UNSAFE_RENAME": "true",
 }
 
-# ---------------------------------------------------------------------------
-# TODO — Kolom Silver BMKG (konfirmasi ke Fabio sebelum mengisi bagian ini)
-# ---------------------------------------------------------------------------
-# Nama kolom yang DIHARAPKAN ada di Silver BMKG setelah Fabio flatten:
-#
-#   COL_ADM4      = "adm4"        -- kode wilayah ADM4 (join key ke dim_wilayah)
-#   COL_DATETIME  = "datetime"    -- timestamp prakiraan (join key ke dim_waktu)
-#   COL_CUACA     = "weather"     -- kode cuaca integer (join key ke dim_cuaca.kode_cuaca)
-#   COL_SUHU_MIN  = "tmin"        -- suhu minimum (°C)
-#   COL_SUHU_MAX  = "tmax"        -- suhu maksimum (°C)
-#   COL_KELEMBABAN= "hu"          -- kelembaban relatif (%)
-#   COL_ANGIN_KEC = "ws"          -- kecepatan angin (km/h atau m/s)
-#   COL_ANGIN_ARAH= "wd"          -- arah angin (N, S, NE, ...)
-#
-# Sesuaikan konstanta di bawah setelah mendapat konfirmasi:
-
-COL_ADM4       = "adm4"      # TODO: confirm
-COL_DATETIME   = "datetime"  # TODO: confirm
-COL_CUACA      = "weather"   # TODO: confirm
-COL_SUHU_MIN   = "tmin"      # TODO: confirm
-COL_SUHU_MAX   = "tmax"      # TODO: confirm
-COL_KELEMBABAN = "hu"        # TODO: confirm
-COL_ANGIN_KEC  = "ws"        # TODO: confirm
-COL_ANGIN_ARAH = "wd"        # TODO: confirm
+# Kolom Silver BMKG (confirmed dari src/silver/bmkg.py)
+COL_ADM4       = "adm4"           # kode wilayah ADM4 → join key ke dim_wilayah
+COL_DATETIME   = "local_datetime" # timestamp WIB (naive) → join key ke dim_waktu
+COL_CUACA      = "weather"        # kode cuaca integer → join key ke dim_cuaca.kode_cuaca
+COL_SUHU       = "t"              # suhu prakiraan (°C) — BMKG menyediakan satu nilai per slot
+COL_KELEMBABAN = "hu"             # kelembaban relatif (%)
+COL_ANGIN_KEC  = "ws"             # kecepatan angin (m/s)
+COL_ANGIN_ARAH = "wd"             # arah angin (N, S, NE, ...)
 
 
 def load_silver_bmkg() -> pd.DataFrame:
@@ -101,13 +80,15 @@ def build_fact(
     rows = []
     skipped = 0
     for i, row in enumerate(silver.itertuples(index=False)):
-        adm4        = str(getattr(row, COL_ADM4, None) or "")
-        dt_raw      = getattr(row, COL_DATETIME, None)
-        kode_cuaca  = str(int(getattr(row, COL_CUACA, -1) or -1))
+        adm4       = str(getattr(row, COL_ADM4, None) or "")
+        dt_raw     = getattr(row, COL_DATETIME, None)
+        cuaca_raw  = getattr(row, COL_CUACA, None)
+        kode_cuaca = str(int(cuaca_raw)) if cuaca_raw is not None and not pd.isna(cuaca_raw) else "-1"
 
         wilayah_id = wilayah_map.get(adm4)
         cuaca_id   = cuaca_map.get(kode_cuaca)
-        waktu_id   = waktu_map.get(str(dt_raw)[:19] if dt_raw else "")
+        dt_str     = "" if (dt_raw is None or pd.isnull(dt_raw)) else str(dt_raw)[:19]
+        waktu_id   = waktu_map.get(dt_str)
 
         if wilayah_id is None or cuaca_id is None or waktu_id is None:
             skipped += 1
@@ -118,8 +99,7 @@ def build_fact(
             "wilayah_id":      wilayah_id,
             "cuaca_id":        cuaca_id,
             "waktu_id":        waktu_id,
-            "suhu_min":        _float(getattr(row, COL_SUHU_MIN, None)),
-            "suhu_max":        _float(getattr(row, COL_SUHU_MAX, None)),
+            "suhu":            _float(getattr(row, COL_SUHU, None)),
             "kelembaban":      _float(getattr(row, COL_KELEMBABAN, None)),
             "kecepatan_angin": _float(getattr(row, COL_ANGIN_KEC, None)),
             "arah_angin":      str(getattr(row, COL_ANGIN_ARAH, "") or ""),

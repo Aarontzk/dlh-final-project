@@ -59,8 +59,7 @@ CREATE TABLE IF NOT EXISTS fact_prakiraan_cuaca (
     wilayah_id      INTEGER REFERENCES dim_wilayah(wilayah_id),
     cuaca_id        INTEGER REFERENCES dim_cuaca(cuaca_id),
     waktu_id        INTEGER REFERENCES dim_waktu(waktu_id),
-    suhu_min        DOUBLE,
-    suhu_max        DOUBLE,
+    suhu            DOUBLE,    -- suhu prakiraan per slot (°C)
     kelembaban      DOUBLE,
     kecepatan_angin DOUBLE,
     arah_angin      VARCHAR

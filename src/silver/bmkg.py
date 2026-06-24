@@ -1,17 +1,19 @@
 """Silver layer: flatten + clean Bronze BMKG ADM4 -> Parquet + Delta Lake on MinIO.
 
 Steps:
-- List all adm4/raw/*.json objects from bronze bucket
+- List bmkg/{adm4_code}/raw_{timestamp}.json objects from bronze bucket
+- Select only the latest raw snapshot for each ADM4 code
 - Parse each envelope: extract lokasi + iterate data[].cuaca[][] for forecast rows
 - Flatten to tabular: one row per (adm4, datetime) slot
 - Handle nulls + anomalies, enforce types (t->float, datetime->timestamp)
-- Write Parquet snapshot to s3://silver/bmkg/parquet/data.parquet
-- Write Delta Lake table to s3://silver/bmkg/delta/ (versioning via _delta_log)
+- Write Parquet snapshot to s3://silver/bmkg/data.parquet
+- Write Delta Lake table to s3://silver/bmkg/ (versioning via _delta_log)
 
 Run: py -m src.silver.bmkg
 """
 import io
 import json
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
@@ -23,10 +25,14 @@ from setup_buckets import get_minio_client
 
 log = get_logger("silver_bmkg")
 
-BRONZE_PREFIX = "adm4/raw/"
+BRONZE_PREFIX = "bmkg/"
 PARQUET_OBJECT = "bmkg/data.parquet"
 DELTA_URI = f"s3://{config.BUCKET_SILVER}/bmkg"
 MAX_WORKERS = 16
+
+RAW_OBJECT_PATTERN = re.compile(
+    r"^bmkg/(?P<adm4>[^/]+)/raw_(?P<timestamp>\d{8}T\d{6}Z)\.json$"
+)
 
 STORAGE_OPTIONS = {
     "AWS_ENDPOINT_URL": f"http://{config.MINIO_ENDPOINT}",
@@ -45,9 +51,36 @@ PRECIP_MIN = 0.0
 
 
 def _list_bronze_objects(client) -> list[str]:
+    """Return the latest raw snapshot object for every ADM4 code.
+
+    Manifest and malformed object paths are ignored. Snapshot timestamps use
+    a sortable UTC format, so lexical comparison selects the latest version.
+    """
     objects = client.list_objects(config.BUCKET_BRONZE, prefix=BRONZE_PREFIX, recursive=True)
-    names = [obj.object_name for obj in objects if obj.object_name.endswith(".json")]
-    log.info("found %d bronze ADM4 objects", len(names))
+    latest_by_adm4: dict[str, tuple[str, str]] = {}
+    raw_candidates = 0
+    ignored = 0
+
+    for obj in objects:
+        match = RAW_OBJECT_PATTERN.fullmatch(obj.object_name)
+        if not match:
+            ignored += 1
+            continue
+
+        raw_candidates += 1
+        adm4 = match.group("adm4")
+        timestamp = match.group("timestamp")
+        current = latest_by_adm4.get(adm4)
+        if current is None or timestamp > current[0]:
+            latest_by_adm4[adm4] = (timestamp, obj.object_name)
+
+    names = sorted(value[1] for value in latest_by_adm4.values())
+    log.info(
+        "bronze discovery: %d raw snapshots -> %d latest ADM4 objects (%d ignored)",
+        raw_candidates,
+        len(names),
+        ignored,
+    )
     return names
 
 
@@ -55,7 +88,11 @@ def _fetch_one(client, obj_name: str) -> list[dict]:
     """Fetch one bronze object and return flattened forecast rows."""
     raw = client.get_object(config.BUCKET_BRONZE, obj_name).read()
     envelope = json.loads(raw)
-    payload = envelope.get("data", envelope)  # unwrap _metadata envelope
+    # Bronze uploader wraps the original response in {_metadata, data}.
+    # Also accept a bare BMKG response for safer reprocessing/manual imports.
+    payload = envelope.get("data") if "_metadata" in envelope else envelope
+    if not isinstance(payload, dict):
+        raise ValueError(f"Invalid BMKG payload in {obj_name}: expected a JSON object")
 
     top_lokasi = payload.get("lokasi", {})
     adm4 = top_lokasi.get("adm4", "")
@@ -129,12 +166,21 @@ def load_bronze(client) -> list[dict]:
 
     log.info("loaded %d total forecast rows from %d objects (%d failed)",
              len(all_rows), len(obj_names), failed)
+    if failed:
+        raise RuntimeError(
+            f"Failed to parse {failed} of {len(obj_names)} latest Bronze BMKG objects; "
+            "Silver output was not written to avoid publishing incomplete data."
+        )
     return all_rows
 
 
 def to_dataframe(rows: list[dict]) -> pd.DataFrame:
     if not rows:
-        raise RuntimeError("No rows to process — bronze ADM4 bucket is empty. Run `py -m src.bronze.adm4` first.")
+        raise RuntimeError(
+            "No BMKG forecast rows found under "
+            "bronze/bmkg/{adm4_code}/raw_{timestamp}.json. "
+            "Run `py -m src.bronze.adm4` first."
+        )
     df = pd.DataFrame(rows)
 
     # --- type enforcement ---

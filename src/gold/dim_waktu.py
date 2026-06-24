@@ -1,18 +1,18 @@
-"""Gold layer: dim_waktu — datetime dimension from BMKG forecast range.
+"""Gold layer: dim_waktu — datetime dimension dari slot aktual Silver BMKG.
 
-Generates 3-hour interval timestamps covering a configurable window
-(default: 10 days from today). Does NOT depend on Bronze or Silver data.
+Mengekstrak unique local_datetime dari Silver BMKG sehingga setiap slot
+forecast BMKG memiliki waktu_id yang cocok di fact table.
+
+Depends on:
+  - Silver BMKG Delta table  (src/silver/bmkg.py must run first)
 
 Writes to:
   - s3://gold/dim_waktu/  (Delta Lake, for versioning)
   - DuckDB table: dim_waktu  (persistent, for query_*.sql)
 
 Run: py -m src.gold.dim_waktu
-     py -m src.gold.dim_waktu --start 2026-06-24  (optional override)
 """
-import argparse
 import os
-from datetime import datetime, timedelta
 
 import pandas as pd
 from deltalake import DeltaTable, write_deltalake
@@ -23,18 +23,17 @@ from setup_buckets import get_duckdb_connection
 
 log = get_logger("gold_dim_waktu")
 
-DELTA_URI = f"s3://{config.BUCKET_GOLD}/dim_waktu"
+SILVER_BMKG_DELTA_URI = f"s3://{config.BUCKET_SILVER}/bmkg"
+DELTA_URI             = f"s3://{config.BUCKET_GOLD}/dim_waktu"
+
 STORAGE_OPTIONS = {
-    "AWS_ENDPOINT_URL": f"http://{config.MINIO_ENDPOINT}",
-    "AWS_ACCESS_KEY_ID": config.MINIO_ACCESS_KEY,
-    "AWS_SECRET_ACCESS_KEY": config.MINIO_SECRET_KEY,
-    "AWS_REGION": "us-east-1",
-    "AWS_ALLOW_HTTP": "true",
+    "AWS_ENDPOINT_URL":           f"http://{config.MINIO_ENDPOINT}",
+    "AWS_ACCESS_KEY_ID":          config.MINIO_ACCESS_KEY,
+    "AWS_SECRET_ACCESS_KEY":      config.MINIO_SECRET_KEY,
+    "AWS_REGION":                 "us-east-1",
+    "AWS_ALLOW_HTTP":             "true",
     "AWS_S3_ALLOW_UNSAFE_RENAME": "true",
 }
-
-INTERVAL_HOURS = 3
-WINDOW_DAYS = 10  # 7-day forecast + 3-day buffer
 
 _HARI = {
     0: "Senin", 1: "Selasa", 2: "Rabu", 3: "Kamis",
@@ -42,23 +41,29 @@ _HARI = {
 }
 
 
-def build_dataframe(start: datetime | None = None) -> pd.DataFrame:
-    if start is None:
-        today = datetime.now().date()
-        start = datetime(today.year, today.month, today.day, 0, 0, 0)
+def build_dataframe() -> pd.DataFrame:
+    """Ekstrak unique forecast timestamps dari Silver BMKG local_datetime."""
+    dt = DeltaTable(SILVER_BMKG_DELTA_URI, storage_options=STORAGE_OPTIONS)
+    src = dt.to_pandas(columns=["local_datetime"])
 
-    total_slots = WINDOW_DAYS * (24 // INTERVAL_HOURS)
+    unique_dts = (
+        pd.to_datetime(src["local_datetime"].dropna(), errors="coerce")
+          .dropna()
+          .drop_duplicates()
+          .sort_values()
+          .reset_index(drop=True)
+    )
+
     rows = []
-    for i in range(total_slots):
-        dt = start + timedelta(hours=i * INTERVAL_HOURS)
+    for i, ts in enumerate(unique_dts):
         rows.append({
-            "waktu_id":  i + 1,
-            "datetime":  dt,
-            "tanggal":   dt.strftime("%Y-%m-%d"),
-            "jam":       dt.hour,
-            "hari":      _HARI[dt.weekday()],
-            "bulan":     dt.month,
-            "tahun":     dt.year,
+            "waktu_id": i + 1,
+            "datetime":  ts,
+            "tanggal":   ts.strftime("%Y-%m-%d"),
+            "jam":       ts.hour,
+            "hari":      _HARI[ts.weekday()],
+            "bulan":     ts.month,
+            "tahun":     ts.year,
         })
 
     df = pd.DataFrame(rows)
@@ -67,8 +72,9 @@ def build_dataframe(start: datetime | None = None) -> pd.DataFrame:
     df["jam"]      = df["jam"].astype("int32")
     df["bulan"]    = df["bulan"].astype("int32")
     df["tahun"]    = df["tahun"].astype("int32")
+
     log.info(
-        "built dim_waktu: %d rows  (%s  →  %s)",
+        "built dim_waktu: %d unique slots  (%s → %s)",
         len(df), df["datetime"].min(), df["datetime"].max(),
     )
     return df
@@ -95,20 +101,12 @@ def register_duckdb(df: pd.DataFrame) -> None:
     log.info("DuckDB table dim_waktu: %d rows", n)
 
 
-def run(start: datetime | None = None) -> None:
-    df = build_dataframe(start)
+def run() -> None:
+    df = build_dataframe()
     write_delta(df)
     register_duckdb(df)
     log.info("dim_waktu done")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--start",
-        type=lambda s: datetime.strptime(s, "%Y-%m-%d"),
-        default=None,
-        help="Start date (YYYY-MM-DD). Default: today midnight.",
-    )
-    args = parser.parse_args()
-    run(args.start)
+    run()

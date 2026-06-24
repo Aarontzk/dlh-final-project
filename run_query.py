@@ -7,6 +7,12 @@ import sys
 from setup_buckets import get_duckdb_connection
 
 
+if hasattr(sys.stdout, "reconfigure"):
+    # DuckDB EXPLAIN plans use Unicode box-drawing characters. Force UTF-8 so
+    # they render correctly in Windows terminals that default to CP1252.
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+
 def main(path: str) -> None:
     with open(path, encoding="utf-8") as f:
         sql = f.read()

@@ -2,6 +2,8 @@
 
 Run: py setup_buckets.py
 """
+import os
+
 import duckdb
 from minio import Minio
 
@@ -32,6 +34,7 @@ def ensure_buckets() -> None:
 
 def get_duckdb_connection() -> duckdb.DuckDBPyConnection:
     """DuckDB connection wired to MinIO via httpfs (S3 path-style)."""
+    os.makedirs(os.path.dirname(config.DUCKDB_PATH), exist_ok=True)
     con = duckdb.connect(config.DUCKDB_PATH)
     con.execute("INSTALL httpfs; LOAD httpfs;")
     con.execute(f"SET s3_endpoint='{config.MINIO_ENDPOINT}';")
