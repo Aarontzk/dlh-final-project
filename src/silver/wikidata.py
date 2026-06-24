@@ -18,6 +18,7 @@ from deltalake import DeltaTable, write_deltalake
 import config
 from logger import get_logger
 from setup_buckets import get_minio_client
+from src.silver.adm4_match import enrich as enrich_adm4
 
 log = get_logger("silver_wikidata")
 
@@ -120,6 +121,7 @@ def write_delta(df: pd.DataFrame) -> None:
 
 def run() -> None:
     df = to_dataframe(load_bronze())
+    df = enrich_adm4(df)            # tambah kolom adm4 (join key ke BMKG/Gold)
     write_parquet(df)
     write_delta(df)
     log.info("silver done: %d ADM4 rows | with_pop=%d with_coord=%d",

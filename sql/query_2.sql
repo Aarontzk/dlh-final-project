@@ -10,7 +10,8 @@ SELECT
 FROM fact_prakiraan_cuaca f
 JOIN dim_wilayah w ON f.wilayah_id = w.wilayah_id
 JOIN dim_cuaca   c ON f.cuaca_id   = c.cuaca_id
-WHERE c.kategori_risiko IN ('Ekstrem', 'Bahaya')
+-- kategori_risiko harus cocok dgn vocab dim_cuaca milik Farel (cek saat Gold jadi)
+WHERE c.kategori_risiko IN ('Tinggi', 'Ekstrem')
 GROUP BY w.kabupaten, w.kecamatan
 HAVING COUNT(DISTINCT w.wilayah_id) > 0
 ORDER BY jumlah_wilayah_terdampak DESC;

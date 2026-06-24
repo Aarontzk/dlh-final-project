@@ -44,6 +44,7 @@
 - **Endpoint:** `https://query.wikidata.org/sparql`
 - **Data yang diambil:** item, itemLabel, populasi (P1082), area (P2046), koordinat (P625 → lat/lon), parent wilayah (P131)
 - **Format:** JSON
+- **PENTING (untuk Farel):** Silver Wikidata SUDAH punya kolom `adm4` (kode BMKG resmi) hasil match ke master `Data ADM4/` — exact (nama_desa+kecamatan) + fallback koordinat terdekat. Match rate **8552/8557 (99.9%)**. Gold tinggal `JOIN ... ON wikidata.adm4 = bmkg.adm4`, tidak perlu fuzzy. Kolom Silver: wikidata_id, nama_wilayah, tipe, parent_id, kecamatan, populasi, area_km2, lat, lon, **adm4**, match_method.
 
 ### 3. cahyadsn/wilayah GitHub (Reference — Fabio)
 - **URL:** https://github.com/cahyadsn/wilayah
