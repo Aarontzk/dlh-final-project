@@ -20,7 +20,7 @@ def _size(client, bucket: str, prefix: str) -> int:
 
 def run() -> None:
     c = get_minio_client()
-    bronze = _size(c, config.BUCKET_BRONZE, "wikidata/jatim_kelurahan_latest.json")
+    bronze = _size(c, config.BUCKET_BRONZE, "wikidata/latest.json")
     parquet = _size(c, config.BUCKET_SILVER, "wikidata/parquet/")
     delta = _size(c, config.BUCKET_SILVER, "wikidata/delta/")
 

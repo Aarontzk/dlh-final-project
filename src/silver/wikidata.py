@@ -21,7 +21,7 @@ from setup_buckets import get_minio_client
 
 log = get_logger("silver_wikidata")
 
-BRONZE_LATEST = "wikidata/jatim_kelurahan_latest.json"
+BRONZE_LATEST = "wikidata/latest.json"
 PARQUET_OBJECT = "wikidata/parquet/jatim_adm4.parquet"
 DELTA_URI = f"s3://{config.BUCKET_SILVER}/wikidata/delta"
 
