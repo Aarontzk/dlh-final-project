@@ -21,7 +21,8 @@ from setup_buckets import get_minio_client
 log = get_logger("bronze_wikidata")
 
 OBJECT_LATEST = "wikidata/latest.json"
-CHECKSUM_OBJECT = "checksums/wikidata.md5"
+CHECKSUM_OBJECT = "checksums/checksums.json"   # registry gabungan, sama dgn BMKG
+CHECKSUM_KEY = "wikidata"
 
 
 def fetch_sparql() -> dict:
@@ -45,12 +46,13 @@ def _md5(payload: bytes) -> str:
     return hashlib.md5(payload).hexdigest()
 
 
-def _read_existing_checksum(client) -> str | None:
+def _load_checksums(client) -> dict[str, str]:
+    """Return shared registry {source: md5}, or {} if absent."""
     try:
         obj = client.get_object(config.BUCKET_BRONZE, CHECKSUM_OBJECT)
-        return obj.read().decode("utf-8").strip()
+        return json.loads(obj.read())
     except Exception:
-        return None
+        return {}
 
 
 def ingest() -> None:
@@ -61,8 +63,8 @@ def ingest() -> None:
     payload_bytes = json.dumps(raw, sort_keys=True, ensure_ascii=False).encode("utf-8")
     content_md5 = _md5(payload_bytes)
 
-    existing = _read_existing_checksum(client)
-    if existing == content_md5:
+    checksums = _load_checksums(client)
+    if checksums.get(CHECKSUM_KEY) == content_md5:
         log.info("checksum unchanged (%s) - skip ingestion (idempotent)", content_md5)
         return
 
@@ -91,10 +93,13 @@ def ingest() -> None:
         )
         log.info("wrote s3://%s/%s (%d bytes)", config.BUCKET_BRONZE, obj_name, len(body))
 
+    # update shared registry, preserve other sources' entries (e.g. BMKG)
+    checksums[CHECKSUM_KEY] = content_md5
+    reg_body = json.dumps(checksums, sort_keys=True, ensure_ascii=False, indent=2).encode("utf-8")
     client.put_object(
         config.BUCKET_BRONZE, CHECKSUM_OBJECT,
-        io.BytesIO(content_md5.encode()), length=len(content_md5),
-        content_type="text/plain",
+        io.BytesIO(reg_body), length=len(reg_body),
+        content_type="application/json",
     )
     log.info("ingestion complete, md5=%s", content_md5)
 
