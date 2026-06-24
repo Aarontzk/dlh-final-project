@@ -21,8 +21,12 @@ def _size(client, bucket: str, prefix: str) -> int:
 def run() -> None:
     c = get_minio_client()
     bronze = _size(c, config.BUCKET_BRONZE, "wikidata/latest.json")
-    parquet = _size(c, config.BUCKET_SILVER, "wikidata/parquet/")
-    delta = _size(c, config.BUCKET_SILVER, "wikidata/delta/")
+    parquet = _size(c, config.BUCKET_SILVER, "wikidata/data.parquet")
+    # Delta table lives under silver/wikidata/ (part files + _delta_log), excluding the standalone parquet
+    delta = sum(
+        o.size for o in c.list_objects(config.BUCKET_SILVER, prefix="wikidata/", recursive=True)
+        if o.object_name != "wikidata/data.parquet"
+    )
 
     log.info("=== BX2 format size comparison (Wikidata ADM4 Jatim) ===")
     base = bronze or 1
