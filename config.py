@@ -1,8 +1,8 @@
 """Central config for DLH lakehouse pipeline (MinIO + DuckDB)."""
 import os
 
-# --- MinIO / S3 ---
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "169.254.83.107:9000")
+# --- MinIO / S3 sesuaikan dengan port minio---
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "127.0.0.1:9000") 
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
 MINIO_SECURE = os.getenv("MINIO_SECURE", "false").lower() == "true"

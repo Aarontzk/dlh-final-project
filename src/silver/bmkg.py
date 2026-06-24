@@ -24,8 +24,8 @@ from setup_buckets import get_minio_client
 log = get_logger("silver_bmkg")
 
 BRONZE_PREFIX = "adm4/raw/"
-PARQUET_OBJECT = "bmkg/parquet/data.parquet"
-DELTA_URI = f"s3://{config.BUCKET_SILVER}/bmkg/delta"
+PARQUET_OBJECT = "bmkg/data.parquet"
+DELTA_URI = f"s3://{config.BUCKET_SILVER}/bmkg"
 MAX_WORKERS = 16
 
 STORAGE_OPTIONS = {

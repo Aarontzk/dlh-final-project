@@ -22,8 +22,8 @@ from setup_buckets import get_minio_client
 log = get_logger("silver_wikidata")
 
 BRONZE_LATEST = "wikidata/latest.json"
-PARQUET_OBJECT = "wikidata/parquet/jatim_adm4.parquet"
-DELTA_URI = f"s3://{config.BUCKET_SILVER}/wikidata/delta"
+PARQUET_OBJECT = "wikidata/data.parquet"
+DELTA_URI = f"s3://{config.BUCKET_SILVER}/wikidata"
 
 STORAGE_OPTIONS = {
     "AWS_ENDPOINT_URL": f"http://{config.MINIO_ENDPOINT}",
