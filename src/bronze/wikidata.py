@@ -20,8 +20,8 @@ from setup_buckets import get_minio_client
 
 log = get_logger("bronze_wikidata")
 
-OBJECT_LATEST = "wikidata/jatim_kelurahan_latest.json"
-CHECKSUM_OBJECT = "wikidata/_latest.md5"
+OBJECT_LATEST = "wikidata/latest.json"
+CHECKSUM_OBJECT = "checksums/wikidata.md5"
 
 
 def fetch_sparql() -> dict:
@@ -82,7 +82,7 @@ def ingest() -> None:
 
     # write timestamped snapshot + latest pointer + checksum
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    snapshot = f"wikidata/jatim_kelurahan_{ts}.json"
+    snapshot = f"wikidata/raw_{ts}.json"
     for obj_name in (snapshot, OBJECT_LATEST):
         client.put_object(
             config.BUCKET_BRONZE, obj_name,

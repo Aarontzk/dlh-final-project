@@ -5,7 +5,7 @@ Features:
 - BX1 metadata envelope per file (ingestion_timestamp, content_md5, adm4_code, source_file)
 - Idempotency via per-file MD5: skip upload if checksum matches existing object
 - Parallel uploads via ThreadPoolExecutor for throughput
-- Manifest written to adm4/_manifest.json after each run
+- Manifest written to bmkg/_manifest.json after each run
 
 Run: py -m src.bronze.adm4
 """
@@ -24,9 +24,9 @@ from setup_buckets import get_minio_client
 log = get_logger("bronze_adm4")
 
 DATA_DIR = Path("Data ADM4")
-BRONZE_PREFIX = "adm4/raw"
-CHECKSUM_PREFIX = "adm4/_checksums"
-MANIFEST_OBJECT = "adm4/_manifest.json"
+BRONZE_PREFIX = "bmkg"
+CHECKSUM_OBJECT = "checksums/checksums.json"
+MANIFEST_OBJECT = "bmkg/_manifest.json"
 MAX_WORKERS = 16
 OPERATOR_ID = "fabio"
 SOURCE_NAME = "bmkg-adm4-local"
@@ -38,9 +38,8 @@ def _md5(data: bytes) -> str:
 
 def _load_existing_checksums(client) -> dict[str, str]:
     """Return {adm4_code: md5} from the stored checksum index, or {} if absent."""
-    obj_name = f"{CHECKSUM_PREFIX}/index.json"
     try:
-        obj = client.get_object(config.BUCKET_BRONZE, obj_name)
+        obj = client.get_object(config.BUCKET_BRONZE, CHECKSUM_OBJECT)
         return json.loads(obj.read().decode("utf-8"))
     except Exception:
         return {}
@@ -48,9 +47,8 @@ def _load_existing_checksums(client) -> dict[str, str]:
 
 def _save_checksums(client, checksums: dict[str, str]) -> None:
     body = json.dumps(checksums, sort_keys=True, ensure_ascii=False, indent=2).encode("utf-8")
-    obj_name = f"{CHECKSUM_PREFIX}/index.json"
     client.put_object(
-        config.BUCKET_BRONZE, obj_name,
+        config.BUCKET_BRONZE, CHECKSUM_OBJECT,
         io.BytesIO(body), length=len(body),
         content_type="application/json",
     )
@@ -80,7 +78,7 @@ def _upload_one(client, file_path: Path, existing_checksums: dict[str, str], ts:
         "data": raw_data,
     }
     body = json.dumps(envelope, ensure_ascii=False).encode("utf-8")
-    obj_name = f"{BRONZE_PREFIX}/{adm4_code}.json"
+    obj_name = f"{BRONZE_PREFIX}/{adm4_code}/raw_{ts}.json"
 
     client.put_object(
         config.BUCKET_BRONZE, obj_name,
