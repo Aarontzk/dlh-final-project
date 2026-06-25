@@ -7,6 +7,17 @@ Compares bytes of the same Wikidata dataset across:
 
 Run: py -m src.bronze.bx2_format_comparison
 """
+import os
+import sys
+
+# Allow direct run (python bx2_format_comparison.py): add repo root to path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
+# Bootstrap: allow running this file directly (VS Code Run button), not just via -m
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
+
 import config
 from logger import get_logger
 from setup_buckets import get_minio_client

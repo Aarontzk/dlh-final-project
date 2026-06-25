@@ -15,6 +15,11 @@ import os
 import pandas as pd
 from deltalake import DeltaTable, write_deltalake
 
+# Bootstrap: allow running this file directly (VS Code Run button), not just via -m
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
+
 import config
 from logger import get_logger
 from setup_buckets import get_duckdb_connection

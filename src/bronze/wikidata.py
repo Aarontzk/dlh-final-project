@@ -14,6 +14,11 @@ from datetime import datetime, timezone
 
 import requests
 
+# Bootstrap: allow running this file directly (VS Code Run button), not just via -m
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
+
 import config
 from logger import get_logger
 from setup_buckets import get_minio_client
@@ -46,6 +51,15 @@ def _md5(payload: bytes) -> str:
     return hashlib.md5(payload).hexdigest()
 
 
+def _latest_exists(client) -> bool:
+    """True if the latest snapshot object is still present in the bucket."""
+    try:
+        client.stat_object(config.BUCKET_BRONZE, OBJECT_LATEST)
+        return True
+    except Exception:
+        return False
+
+
 def _load_checksums(client) -> dict[str, str]:
     """Return shared registry {source: md5}, or {} if absent."""
     try:
@@ -59,12 +73,18 @@ def ingest() -> None:
     client = get_minio_client()
     raw = fetch_sparql()
 
-    # checksum only over the actual data payload (stable, excludes our metadata)
-    payload_bytes = json.dumps(raw, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    # checksum over canonical payload: SPARQL has no ORDER BY, so bindings
+    # arrive in nondeterministic order. Sort them before hashing, else md5
+    # changes every run and idempotency never triggers.
+    bindings = raw.get("results", {}).get("bindings", [])
+    canonical = sorted(
+        json.dumps(b, sort_keys=True, ensure_ascii=False) for b in bindings
+    )
+    payload_bytes = json.dumps(canonical, ensure_ascii=False).encode("utf-8")
     content_md5 = _md5(payload_bytes)
 
     checksums = _load_checksums(client)
-    if checksums.get(CHECKSUM_KEY) == content_md5:
+    if checksums.get(CHECKSUM_KEY) == content_md5 and _latest_exists(client):
         log.info("checksum unchanged (%s) - skip ingestion (idempotent)", content_md5)
         return
 
