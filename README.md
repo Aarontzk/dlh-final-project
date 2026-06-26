@@ -106,7 +106,7 @@ py run_query.py sql/query_1.sql   # ganti 1..6
 | # | Sumber | Owner | Detail |
 |---|--------|-------|--------|
 | 1 | **BMKG API** *(primary)* | Fabio | `api.bmkg.go.id/publik/prakiraan-cuaca?adm4={kode}` — seluruh kelurahan Jatim (prefix ADM4 `35.*`, ~7.724 wilayah), per 3 jam, 7 hari ke depan. JSON nested (`lokasi` + array `data`). Hasil fetch tersimpan sebagai **8369 file** di `Data ADM4/`. |
-| 2 | **Wikidata SPARQL** *(secondary)* | Aka | `query.wikidata.org/sparql` — kelurahan (Q965568) + desa (Q26211545) di Jawa Timur (Q3586), transitif via `P131*`. Ambil populasi (P1082), area (P2046), koordinat (P625), parent (P131). |
+| 2 | **Wikidata SPARQL** *(secondary)* | Azka | `query.wikidata.org/sparql` — kelurahan (Q965568) + desa (Q26211545) di Jawa Timur (Q3586), transitif via `P131*`. Ambil populasi (P1082), area (P2046), koordinat (P625), parent (P131). |
 | 3 | **cahyadsn/wilayah** *(reference)* | Fabio | Sumber daftar kode ADM4 Indonesia, difilter prefix `35` untuk iterasi BMKG API. |
 
 🔗 **Join key:** Silver Wikidata di-*enrich* dengan kolom `adm4` (kode BMKG resmi) — exact match `nama_desa + kecamatan`, fallback koordinat terdekat (~5 km). Match rate **~99,9%**, jadi Gold tinggal `JOIN ON adm4` tanpa fuzzy.
@@ -167,8 +167,8 @@ Tiap query wajib ≥1 fungsi agregasi (`SUM`/`AVG`/`COUNT`/`MAX`/`MIN`) + klausa
 
 | Query | Owner | Topik |
 |-------|-------|-------|
-| [Q1](sql/query_1.sql) | Aka | Rata-rata suhu per kabupaten saat cuaca berisiko Tinggi/Ekstrem |
-| [Q2](sql/query_2.sql) | Aka | Jumlah kelurahan/desa terdampak cuaca berbahaya per kecamatan |
+| [Q1](sql/query_1.sql) | Azka | Rata-rata suhu per kabupaten saat cuaca berisiko Tinggi/Ekstrem |
+| [Q2](sql/query_2.sql) | Azka | Jumlah kelurahan/desa terdampak cuaca berbahaya per kecamatan |
 | [Q3](sql/query_3.sql) | Fabio | Distribusi frekuensi kondisi cuaca terbanyak per kabupaten (WHERE populasi > 0) |
 | [Q4](sql/query_4.sql) | Fabio | Top 10 wilayah dengan rata-rata suhu tertinggi |
 | [Q5](sql/query_5.sql) | Farel | Wilayah terdampak cuaca risiko tinggi/ekstrem per kabupaten |
@@ -180,8 +180,8 @@ Tiap query wajib ≥1 fungsi agregasi (`SUM`/`AVG`/`COUNT`/`MAX`/`MIN`) + klausa
 
 | Bonus | Owner | Deskripsi |
 |-------|-------|-----------|
-| **BX1** Custom Metadata *(+5%)* | Aka | Envelope `_metadata` di Bronze: `ingestion_timestamp`, `source_api_version`, `operator_id`, `content_md5`, `row_count`. Lihat `_metadata` di tiap objek Bronze. |
-| **BX2** File Format Comparison *(+5%)* | Aka | Bandingkan ukuran JSON vs Parquet vs Delta. Jalankan `py -m src.bronze.bx2_format_comparison`. Hasil: Parquet jauh lebih kecil dari JSON. |
+| **BX1** Custom Metadata *(+5%)* | Azka | Envelope `_metadata` di Bronze: `ingestion_timestamp`, `source_api_version`, `operator_id`, `content_md5`, `row_count`. Lihat `_metadata` di tiap objek Bronze. |
+| **BX2** File Format Comparison *(+5%)* | Azka | Bandingkan ukuran JSON vs Parquet vs Delta. Jalankan `py -m src.bronze.bx2_format_comparison`. Hasil: Parquet jauh lebih kecil dari JSON. |
 | **BX3** Query EXPLAIN ANALYZE *(+5%)* | Farel | `EXPLAIN ANALYZE` 2 query Gold — bukti *filter & projection pushdown*. Jalankan `py run_query.py sql/explain_query_5.sql` & `sql/explain_query_6.sql`. |
 
 ---
@@ -231,7 +231,7 @@ Tiap query wajib ≥1 fungsi agregasi (`SUM`/`AVG`/`COUNT`/`MAX`/`MIN`) + klausa
 
 | NRP | Nama | Alias | Tanggung jawab |
 |-----|------|-------|----------------|
-| 5026241130 | Muhammad Azka Bilfaqih | **Aka** | Wikidata (Bronze + Silver), Q1–Q2, BX1, BX2 |
+| 5026241130 | Muhammad Azka Bilfaqih | **Azka** | Wikidata (Bronze + Silver), Q1–Q2, BX1, BX2 |
 | 5026241146 | Fabio Andrea Liui | **Fabio** | BMKG ~7.724 ADM4 (Bronze + Silver), Q3–Q4 |
 | 5026241114 | Ahmad Maulana al Farel Rizantha | **Farel** | Gold Star Schema (dim + fact), Q5–Q6, BX3 |
 
