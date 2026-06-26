@@ -12,7 +12,26 @@ import { renderBar } from "./charts.js";
 import { renderMap, renderLegend } from "./map.js";
 
 const $ = (sel) => document.querySelector(sel);
-const setStatus = (msg) => ($("#status").textContent = msg);
+
+// Status indikator: cuma muncul saat memuat / error. Data lokal kecil, query
+// instan, jadi tidak ada teks status "selesai" yang berisik.
+const statusEl = $("#status");
+function showBusy(msg = "memuat") {
+  statusEl.textContent = msg;
+  statusEl.classList.add("busy");
+  statusEl.classList.remove("err");
+  statusEl.hidden = false;
+}
+function showIdle() {
+  statusEl.hidden = true;
+  statusEl.classList.remove("busy", "err");
+}
+function showError(msg) {
+  statusEl.textContent = msg;
+  statusEl.classList.add("err");
+  statusEl.classList.remove("busy");
+  statusEl.hidden = false;
+}
 
 const state = {
   kabupaten: "",
@@ -106,12 +125,11 @@ async function populateFilters() {
 }
 
 function updateSuhuLabel() {
-  $("#suhu-label").textContent = `${state.suhuMin}–${state.suhuMax}`;
+  $("#suhu-label").textContent = `${state.suhuMin}-${state.suhuMax}`;
 }
 
 // ---------- explore run ----------
 async function runExplore() {
-  setStatus("menghitung…");
   try {
     const [summary] = await query(buildSummarySql(state));
     renderStatCards(summary);
@@ -124,9 +142,9 @@ async function runExplore() {
       "Jumlah prakiraan",
     );
     renderTable($("#table"), rows);
-    setStatus(`${rows.length} grup · siap`);
+    showIdle();
   } catch (e) {
-    setStatus("error: " + e.message);
+    showError("Gagal memuat data");
     console.error(e);
   }
 }
@@ -159,20 +177,29 @@ async function runPreset(id) {
   if (!p) return;
   $("#preset-title").textContent = p.judul;
   $("#preset-desc").textContent = p.desc;
-  setStatus("menjalankan " + id + "…");
-  const rows = await query(p.sql);
-  renderTable($("#preset-table"), rows);
-  setStatus(`${rows.length} baris · siap`);
+  try {
+    const rows = await query(p.sql);
+    renderTable($("#preset-table"), rows);
+    showIdle();
+  } catch (e) {
+    showError("Gagal menjalankan query");
+    console.error(e);
+  }
 }
 
 // ---------- map ----------
 async function loadMap() {
-  setStatus("memuat peta…");
   renderLegend($("#map-legend"));
-  const rows = await query(buildMapSql(state));
-  renderMap(rows);
-  mapLoaded = true;
-  setStatus(`${rows.length} titik · siap`);
+  showBusy("memuat peta");
+  try {
+    const rows = await query(buildMapSql(state));
+    renderMap(rows);
+    mapLoaded = true;
+    showIdle();
+  } catch (e) {
+    showError("Gagal memuat peta");
+    console.error(e);
+  }
 }
 
 // ---------- tabs ----------
@@ -234,15 +261,17 @@ function wireEvents() {
 // ---------- boot ----------
 async function main() {
   try {
-    await initDb(setStatus);
+    showBusy("memuat");
+    await initDb();
     await populateFilters();
     buildPresetCards();
     wireEvents();
     $("#tabs").hidden = false;
     $("#app").hidden = false;
     await runExplore();
+    showIdle();
   } catch (e) {
-    setStatus("gagal init: " + e.message);
+    showError("Gagal memuat aplikasi");
     console.error(e);
   }
 }
