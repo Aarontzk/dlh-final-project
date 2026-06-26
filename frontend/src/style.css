@@ -417,14 +417,6 @@ tbody tr:hover { background: var(--surface-2); }
 
 /* ---------- misc ---------- */
 .muted { color: var(--muted); }
-.foot {
-  padding: 1.2rem 1.4rem;
-  font-size: 0.8rem;
-  font-style: italic;
-  color: var(--muted);
-  border-top: 1px solid var(--line);
-  text-align: center;
-}
 
 /* scrollbars in theme */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -554,23 +546,6 @@ button.primary:hover::after { animation: shimmer 0.8s ease; }
   background: linear-gradient(90deg, var(--gold), transparent);
 }
 
-/* footer flourish: two small gold diamonds drawn in CSS, no glyphs */
-.foot { position: relative; }
-.foot::before,
-.foot::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  width: 6px;
-  height: 6px;
-  margin-top: -3px;
-  background: var(--gold);
-  opacity: 0.6;
-  transform: rotate(45deg);
-}
-.foot::before { left: 1.4rem; }
-.foot::after { right: 1.4rem; }
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -583,6 +558,4 @@ button.primary:hover::after { animation: shimmer 0.8s ease; }
 @media (max-width: 760px) {
   section[data-panel="jelajah"] { grid-template-columns: 1fr; }
   .filters { position: static; }
-  .foot::before,
-  .foot::after { display: none; }
 }
