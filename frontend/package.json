@@ -1,0 +1,19 @@
+{
+  "name": "dlh-cuaca-frontend",
+  "version": "1.0.0",
+  "description": "Frontend eksplorasi data lakehouse prakiraan cuaca Jawa Timur (DuckDB-WASM, query in-browser).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@duckdb/duckdb-wasm": "^1.29.0",
+    "chart.js": "^4.4.7",
+    "leaflet": "^1.9.4"
+  },
+  "devDependencies": {
+    "vite": "^6.0.7"
+  }
+}

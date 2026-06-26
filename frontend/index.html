@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cuaca Jatim · Eksplorasi Data Lakehouse</title>
+    <meta
+      name="description"
+      content="Eksplorasi prakiraan cuaca & risiko bencana Jawa Timur. Query in-browser tanpa nulis SQL."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Spectral:wght@400;500;600&family=Fira+Code&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo" aria-hidden="true">JT</span>
+        <div>
+          <h1>Cuaca Jawa Timur</h1>
+          <p class="subtitle">
+            Eksplorasi data lakehouse, query langsung di browser tanpa SQL
+          </p>
+        </div>
+      </div>
+      <div id="status" class="status">memuat mesin data</div>
+    </header>
+
+    <nav class="tabs" id="tabs" hidden>
+      <button class="tab active" data-tab="jelajah">Jelajah</button>
+      <button class="tab" data-tab="pertanyaan">Pertanyaan</button>
+      <button class="tab" data-tab="peta">Peta Risiko</button>
+    </nav>
+
+    <main id="app" hidden>
+      <!-- JELAJAH -->
+      <section class="panel" data-panel="jelajah">
+        <aside class="filters">
+          <h2>Filter</h2>
+
+          <label>Kabupaten / Kota</label>
+          <select id="f-kabupaten"><option value="">Semua</option></select>
+
+          <label>Kategori Risiko</label>
+          <div id="f-risiko" class="chips"></div>
+
+          <label>Kondisi Cuaca</label>
+          <select id="f-cuaca"><option value="">Semua</option></select>
+
+          <label>Rentang Suhu (°C): <span id="suhu-label"></span></label>
+          <div class="range-row">
+            <input type="range" id="f-suhu-min" />
+            <input type="range" id="f-suhu-max" />
+          </div>
+
+          <label>Tanggal</label>
+          <select id="f-tanggal"><option value="">Semua</option></select>
+
+          <label>Kelompokkan per</label>
+          <select id="f-groupby">
+            <option value="kabupaten">Kabupaten</option>
+            <option value="kecamatan">Kecamatan</option>
+            <option value="nama_desa">Desa / Kelurahan</option>
+            <option value="deskripsi">Kondisi Cuaca</option>
+            <option value="kategori_risiko">Kategori Risiko</option>
+          </select>
+
+          <div class="filter-actions">
+            <button id="btn-run" class="primary">Tampilkan</button>
+            <button id="btn-reset" class="ghost">Reset</button>
+          </div>
+        </aside>
+
+        <div class="results">
+          <div class="stat-cards" id="stat-cards"></div>
+          <div class="chart-wrap">
+            <canvas id="chart"></canvas>
+          </div>
+          <div class="table-wrap">
+            <table id="table"></table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PERTANYAAN -->
+      <section class="panel" data-panel="pertanyaan" hidden>
+        <div class="question-grid" id="question-grid"></div>
+        <div class="preset-result">
+          <h3 id="preset-title">Pilih sebuah pertanyaan</h3>
+          <p id="preset-desc" class="muted"></p>
+          <div class="table-wrap">
+            <table id="preset-table"></table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PETA -->
+      <section class="panel" data-panel="peta" hidden>
+        <div class="map-legend" id="map-legend"></div>
+        <div id="map"></div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      Data: BMKG &amp; Wikidata · Gold star-schema · DuckDB-WASM in-browser ·
+      <a href="https://github.com/Aarontzk/dlh-final-project">repo</a>
+    </footer>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
