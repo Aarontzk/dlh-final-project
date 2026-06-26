@@ -36,7 +36,7 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
-          VITE_BASE: /dlh-final-project/
+          VITE_BASE: /Data-Lakehouse-Prakiraan-Cuaca-Jawa-Timur/
 
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -45,5 +45,6 @@ push ke `main` yang menyentuh `frontend/`.
 
 Sekali setup di repo: Settings → Pages → Source = GitHub Actions.
 
-Live di `https://aarontzk.github.io/dlh-final-project/` (base path sudah di-set
-`/dlh-final-project/` di `vite.config.js`).
+Live di `https://aarontzk.github.io/Data-Lakehouse-Prakiraan-Cuaca-Jawa-Timur/`
+(base path sudah di-set `/Data-Lakehouse-Prakiraan-Cuaca-Jawa-Timur/` di
+`vite.config.js`).
