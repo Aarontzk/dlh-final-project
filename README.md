@@ -5,7 +5,7 @@
 **Integrasi data BMKG & Wikidata untuk analisis risiko bencana hidrometeorologi**
 
 Final Project — *Data Lakehouse (DLH)* · Semester 4 · Institut Teknologi Sepuluh Nopember
-[Presentation - Data Lakehouse Jawa Timur.pdf](https://github.com/user-attachments/files/29378819/Presentation.-.Data.Lakehouse.Jawa.Timur.pdf)
+PPT Link: [Presentation - Data Lakehouse Jawa Timur.pdf](https://github.com/user-attachments/files/29378819/Presentation.-.Data.Lakehouse.Jawa.Timur.pdf)
 
 ![Storage](https://img.shields.io/badge/storage-MinIO-C72E49)
 ![Compute](https://img.shields.io/badge/compute-DuckDB-FFF000)
