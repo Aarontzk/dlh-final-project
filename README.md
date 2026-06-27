@@ -228,7 +228,7 @@ Tiap query wajib ≥1 fungsi agregasi (`SUM`/`AVG`/`COUNT`/`MAX`/`MIN`) + klausa
 
 ---
 
-## 👥 Tim — *MDM Company*
+## 👥 Tim
 
 | NRP | Nama | Alias | Tanggung jawab |
 |-----|------|-------|----------------|
